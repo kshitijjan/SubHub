@@ -3,13 +3,13 @@ import React from 'react'
 import { formatCurrency } from '@/lib/utils'
 
 
-const UpcomingSubscriptionCard = ( { name, price, daysLeft, icon }: UpcomingSubscriptionCardProps) => {
+const UpcomingSubscriptionCard = ( { name, price, currency, daysLeft, icon }: UpcomingSubscriptionCardProps) => {
   return (
     <View className='upcoming-card'>
         <View className='upcoming-row'>
             <Image source={icon} className='upcoming-icon'></Image>
             <View>
-                <Text className='upcoming-price'>{formatCurrency(price)}</Text>
+                <Text className='upcoming-price'>{formatCurrency(price, currency)}</Text>
                 <Text className='upcoming-meta' numberOfLines={1}>
                     {daysLeft > 1 ? `${daysLeft} days left`: 'LastDay'}
                 </Text>
