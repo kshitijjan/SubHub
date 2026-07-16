@@ -3,6 +3,9 @@ import "@/global.css"
 import {useFonts} from "expo-font";
 import { useEffect } from "react";
 
+/**
+ * Configures the root navigation layout after loading the application fonts.
+ */
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     'sans-regular': require('../assets/fonts/PlusJakartaSans-Regular.ttf'),

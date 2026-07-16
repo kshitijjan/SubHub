@@ -17,6 +17,9 @@ import { useState } from "react";
 //nativewind need styled component to enable style support
 const SafeAreaView = styled(RNSafeAreaView);
 
+/**
+ * Renders the subscriptions dashboard with balance information, upcoming renewals, and expandable subscription cards.
+ */
 export default function App() {
 
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<String | null>(null)

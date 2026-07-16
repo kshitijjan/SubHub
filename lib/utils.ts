@@ -1,12 +1,11 @@
 import dayjs from "dayjs";
 
 /**
- * Formats a number to a currency string.
- * Defaults to INR formatting (e.g. ₹1,23,456.78) with exactly two decimal places.
- * 
- * @param value The numerical value to format.
- * @param currency The currency code (default: 'INR').
- * @returns Formatted currency string.
+ * Formats a numeric value using the specified currency and locale.
+ *
+ * @param value - The numeric value to format.
+ * @param currency - The ISO 4217 currency code, defaulting to `INR`.
+ * @returns The value formatted with the currency symbol and exactly two decimal places.
  */
 export function formatCurrency(value: number, currency: string = 'INR'): string {
   try {
