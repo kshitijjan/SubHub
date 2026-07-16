@@ -12,13 +12,14 @@ import ListHeading from "@/components/ListHeading";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import { useState } from "react";
+import { useUser } from '@clerk/expo'
 
 //SafeAreaView is the 3rd party component and does not support style so
 //nativewind need styled component to enable style support
 const SafeAreaView = styled(RNSafeAreaView);
 
 export default function App() {
-
+  const { user } = useUser()
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<String | null>(null)
 
   return (
@@ -29,8 +30,13 @@ export default function App() {
             <>
               <View className="home-header">
                 <View className="home-user">
-                  <Image source={images.avatar} className="home-avatar" />
-                  <Text className="home-user-name">{HOME_USER.name}</Text>
+                  <Image 
+                    source={user?.imageUrl ? { uri: user.imageUrl } : images.avatar} 
+                    className="home-avatar" 
+                  />
+                  <Text className="home-user-name">
+                    {user?.fullName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || HOME_USER.name}
+                  </Text>
                 </View>
 
                 <Image source={icons.add} className="home-add-icon" />
@@ -76,9 +82,9 @@ export default function App() {
             ItemSeparatorComponent={() => <View className="h-4" />}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={<Text className="home-empty-state">No subscriptions yet</Text>}
-            contentContainerClassName="pb-20"
+            contentContainerClassName="pb-30"
           />
 
     </SafeAreaView>
   );
-}
+} 
