@@ -82,7 +82,7 @@ export default function App() {
             ItemSeparatorComponent={() => <View className="h-4" />}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={<Text className="home-empty-state">No subscriptions yet</Text>}
-            contentContainerClassName="pb-20"
+            contentContainerClassName="pb-30"
           />
 
     </SafeAreaView>
