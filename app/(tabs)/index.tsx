@@ -87,4 +87,4 @@ export default function App() {
 
     </SafeAreaView>
   );
-}
+} 
