@@ -1,7 +1,7 @@
 import { useSignIn } from '@clerk/expo'
 import { Link, useRouter, type Href } from 'expo-router'
 import React, { useState } from 'react'
-import { Pressable, TextInput, View, Text, ScrollView, ActivityIndicator } from 'react-native'
+import { Pressable, TextInput, View, Text, ScrollView, ActivityIndicator, Linking } from 'react-native'
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context'
 import { styled } from 'nativewind'
 
@@ -39,9 +39,13 @@ export default function SignInScreen() {
 
           const url = decorateUrl('/')
           if (url.startsWith('http')) {
-            window.location.href = url
+            if (typeof window !== 'undefined') {
+              window.location.href = url
+            } else {
+              Linking.openURL(url).catch((err) => console.error('Failed to open URL:', err))
+            }
           } else {
-            router.push(url as Href)
+            router.replace(url as Href)
           }
         },
       })

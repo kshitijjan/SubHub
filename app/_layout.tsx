@@ -2,18 +2,19 @@ import { SplashScreen, Stack } from "expo-router";
 import "@/global.css"
 import {useFonts} from "expo-font";
 import { useEffect } from "react";
-import { ClerkProvider } from '@clerk/expo'
+import { ClerkProvider, useAuth } from '@clerk/expo'
 import { tokenCache } from '@clerk/expo/token-cache'
 
-const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY
 
-if (!publishableKey) {
+if (!publishableKey || publishableKey === 'pk_live_REPLACE_ME') {
   throw new Error('Add your Clerk Publishable Key to the .env file')
 }
 
 SplashScreen.preventAutoHideAsync()
 
-export default function RootLayout() {
+function InitialLayout() {
+  const { isLoaded: isAuthLoaded } = useAuth()
   const [fontsLoaded] = useFonts({
     'sans-regular': require('../assets/fonts/PlusJakartaSans-Regular.ttf'),
     'sans-bold': require('../assets/fonts/PlusJakartaSans-Bold.ttf'),
@@ -24,16 +25,22 @@ export default function RootLayout() {
   })
 
   useEffect(() => {
-    if(fontsLoaded){
+    if (fontsLoaded && isAuthLoaded) {
       SplashScreen.hideAsync()
     }
-  }, [fontsLoaded])
+  }, [fontsLoaded, isAuthLoaded])
 
-  if(!fontsLoaded) return null;
+  if (!fontsLoaded || !isAuthLoaded) {
+    return null
+  }
 
+  return <Stack screenOptions={{headerShown: false}}/>
+}
+
+export default function RootLayout() {
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <Stack screenOptions={{headerShown: false}}/>
+    <ClerkProvider publishableKey={publishableKey!} tokenCache={tokenCache}>
+      <InitialLayout />
     </ClerkProvider>
   );
 }
