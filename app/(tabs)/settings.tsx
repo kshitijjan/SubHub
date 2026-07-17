@@ -4,12 +4,19 @@ import { styled } from 'nativewind'
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { useAuth, useUser } from '@clerk/expo'
 import images from '@/constants/images'
+import { posthog } from '@/lib/posthog'
 
 const SafeAreaView = styled(RNSafeAreaView);
 
 const Settings = () => {
   const { signOut } = useAuth()
   const { user } = useUser()
+
+  const handleSignOut = async () => {
+    posthog.capture('user_signed_out')
+    posthog.reset()
+    await signOut()
+  }
 
   return (
     <SafeAreaView className='flex-1 bg-background p-5'>
@@ -33,7 +40,7 @@ const Settings = () => {
       <View className="mt-auto pb-20">
         <Pressable 
           className="items-center rounded-2xl bg-destructive py-4"
-          onPress={() => signOut()}
+          onPress={handleSignOut}
         >
           <Text className="text-base font-sans-bold text-white">Sign Out</Text>
         </Pressable>

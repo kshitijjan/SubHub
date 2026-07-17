@@ -1,15 +1,15 @@
 import { useSignUp } from '@clerk/expo'
-import { Link, useRouter, type Href } from 'expo-router'
+import { Link } from 'expo-router'
 import React, { useState } from 'react'
-import { Pressable, TextInput, View, Text, ScrollView, ActivityIndicator, Linking } from 'react-native'
+import { Pressable, TextInput, View, Text, ScrollView, ActivityIndicator } from 'react-native'
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context'
 import { styled } from 'nativewind'
+import { posthog } from '@/lib/posthog'
 
 const SafeAreaView = styled(RNSafeAreaView)
 
 export default function SignUpScreen() {
   const { signUp, errors, fetchStatus } = useSignUp()
-  const router = useRouter()
 
   const [emailAddress, setEmailAddress] = useState('')
   const [password, setPassword] = useState('')
@@ -26,6 +26,7 @@ export default function SignUpScreen() {
 
     if (error) {
       console.error(JSON.stringify(error, null, 2))
+      posthog.captureException(error)
       setGlobalError(error.message || 'Invalid email or password.')
       return
     }
@@ -42,30 +43,14 @@ export default function SignUpScreen() {
 
     if (error) {
       console.error(JSON.stringify(error, null, 2))
+      posthog.captureException(error)
       setGlobalError(error.message || 'Verification failed.')
       return
     }
 
     if (signUp.status === 'complete') {
-      await signUp.finalize({
-        navigate: ({ session, decorateUrl }) => {
-          if (session?.currentTask) {
-            console.log(session?.currentTask)
-            return
-          }
-
-          const url = decorateUrl('/')
-          if (url.startsWith('http')) {
-            if (typeof window !== 'undefined') {
-              window.location.href = url
-            } else {
-              Linking.openURL(url).catch((err) => console.error('Failed to open URL:', err))
-            }
-          } else {
-            router.replace(url as Href)
-          }
-        },
-      })
+      await signUp.finalize()
+      posthog.capture('user_signed_up', { verification_method: 'email_code' })
     } else {
       console.error('Sign-up attempt not complete:', signUp)
     }
