@@ -13,6 +13,7 @@ import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import { useState } from "react";
 import { useUser } from '@clerk/expo'
+import { posthog } from '@/lib/posthog'
 
 //SafeAreaView is the 3rd party component and does not support style so
 //nativewind need styled component to enable style support
@@ -75,7 +76,19 @@ export default function App() {
             <SubscriptionCard
               {...item}
               expanded={expandedSubscriptionId === item.id}
-              onPress={() => setExpandedSubscriptionId((currentId) => (currentId === item.id ? null : item.id))}
+              onPress={() => {
+                const isExpanding = expandedSubscriptionId !== item.id;
+                setExpandedSubscriptionId((currentId) => (currentId === item.id ? null : item.id));
+                
+                if (isExpanding) {
+                  posthog.capture('subscription_expanded', {
+                    subscription_id: item.id ?? '',
+                    category: item.category ?? '',
+                    billing_interval: item.billing?.toLowerCase() ?? '',
+                    subscription_status: item.status ?? '',
+                  });
+                }
+              }}
               />
             )} 
             extraData={expandedSubscriptionId}
