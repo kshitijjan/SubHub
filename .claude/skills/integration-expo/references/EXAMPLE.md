@@ -109,7 +109,7 @@ npx expo run:android
 
 ### Configuration
 
-PostHog is configured in `src/config/posthog.ts` using environment variables from `app.json`:
+PostHog is configured in `src/config/posthog.ts` using environment variables from `app.config.js`:
 
 ```typescript
 import Constants from 'expo-constants'
@@ -324,10 +324,15 @@ export default function RootLayout() {
   // React Compiler will auto-optimize this effect
   useEffect(() => {
     if (previousPathname.current !== pathname) {
+      // Create an explicit allowlist of non-sensitive route parameters
+      const allowedParams = ['id', 'category', 'ref']
+      const safeParams = Object.fromEntries(
+        Object.entries(params).filter(([key]) => allowedParams.includes(key))
+      )
+
       posthog.screen(pathname, {
         previous_screen: previousPathname.current ?? null,
-        // Include route params for analytics (filter sensitive data if needed)
-        ...params,
+        ...safeParams,
       })
       previousPathname.current = pathname
     }

@@ -77,13 +77,17 @@ export default function App() {
               {...item}
               expanded={expandedSubscriptionId === item.id}
               onPress={() => {
-                setExpandedSubscriptionId((currentId) => (currentId === item.id ? null : item.id))
-                posthog.capture('subscription_expanded', {
-                  subscription_id: item.id ?? '',
-                  category: item.category ?? '',
-                  billing_interval: item.billing?.toLowerCase() ?? '',
-                  subscription_status: item.status ?? '',
-                })
+                const isExpanding = expandedSubscriptionId !== item.id;
+                setExpandedSubscriptionId((currentId) => (currentId === item.id ? null : item.id));
+                
+                if (isExpanding) {
+                  posthog.capture('subscription_expanded', {
+                    subscription_id: item.id ?? '',
+                    category: item.category ?? '',
+                    billing_interval: item.billing?.toLowerCase() ?? '',
+                    subscription_status: item.status ?? '',
+                  });
+                }
               }}
               />
             )} 

@@ -13,9 +13,13 @@ const Settings = () => {
   const { user } = useUser()
 
   const handleSignOut = async () => {
-    posthog.capture('user_signed_out')
-    posthog.reset()
-    await signOut()
+    try {
+      await signOut()
+      posthog.capture('user_signed_out')
+      posthog.reset()
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
   }
 
   return (
