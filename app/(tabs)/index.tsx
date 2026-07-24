@@ -45,7 +45,11 @@ export default function App() {
                   </Text>
                 </View>
 
-                <Pressable onPress={() => setIsModalVisible(true)}>
+                <Pressable 
+                  onPress={() => setIsModalVisible(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add subscription"
+                >
                   <Image source={icons.add} className="home-add-icon" />
                 </Pressable>
               </View>

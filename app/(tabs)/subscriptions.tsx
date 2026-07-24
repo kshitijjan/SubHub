@@ -18,7 +18,7 @@ const Subscriptions = () => {
       (sub.category && sub.category.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (sub.plan && sub.plan.toLowerCase().includes(searchQuery.toLowerCase()))
     );
-  }, [searchQuery]);
+  }, [searchQuery, subscriptions]);
 
   return (
     <SafeAreaView className='flex-1 bg-background p-5'>

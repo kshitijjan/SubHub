@@ -38,7 +38,8 @@ export default function CreateSubscriptionModal({ visible, onClose, onAdd }: Cre
     onClose();
   };
 
-  const isFormValid = name.trim() !== '' && parseFloat(price) > 0;
+  const numericPrice = Number(price);
+  const isFormValid = name.trim() !== '' && Number.isFinite(numericPrice) && numericPrice > 0;
 
   const getIconForName = (subName: string) => {
     const normalizedName = subName.toLowerCase().trim();
@@ -52,9 +53,7 @@ export default function CreateSubscriptionModal({ visible, onClose, onAdd }: Cre
       }
     }
 
-    // Generate a remote brand logo URI
-    const domain = normalizedName.replace(/\s+/g, '') + '.com';
-    return { uri: `https://logo.clearbit.com/${domain}` };
+    return icons.wallet;
   };
 
   const handleSubmit = () => {
@@ -68,7 +67,7 @@ export default function CreateSubscriptionModal({ visible, onClose, onAdd }: Cre
     const newSub = {
       id: Math.random().toString(36).substring(2, 9),
       name: name.trim(),
-      price: parseFloat(price),
+      price: numericPrice,
       currency: "USD",
       billing: frequency,
       category,
@@ -84,7 +83,7 @@ export default function CreateSubscriptionModal({ visible, onClose, onAdd }: Cre
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
