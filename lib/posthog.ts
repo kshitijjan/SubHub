@@ -13,5 +13,4 @@ export const posthog = new PostHog(projectToken || 'placeholder_key', {
   host: host || 'https://us.i.posthog.com',
   disabled: !isConfigured,
   captureAppLifecycleEvents: true,
-  debug: __DEV__,
 })

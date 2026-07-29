@@ -3,8 +3,10 @@ import React, { useState } from 'react'
 import { icons } from '@/constants/icons'
 import { formatCurrency, formatStatusLabel, formatSubscriptionDateTime } from '@/lib/utils'
 import clsx from 'clsx'
+import { useSubscriptions } from '@/lib/SubscriptionsContext'
 
 const SubscriptionCard = ({ name, price, currency, icon, billing, color, category, plan, renewalDate, expanded, onPress, paymentMethod, startDate, status }: SubscriptionCardProps) => {
+  const { globalCurrency } = useSubscriptions();
   const [imgError, setImgError] = useState(false);
 
   return (
@@ -27,7 +29,7 @@ const SubscriptionCard = ({ name, price, currency, icon, billing, color, categor
         </View>
 
         <View className='sub-price-box'>
-            <Text className='sub-price'>{formatCurrency(price, currency)}</Text>
+            <Text className='sub-price'>{formatCurrency(price, globalCurrency)}</Text>
             <Text className='sub-billing'>{billing}</Text>
         </View>
       </View>  
