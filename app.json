@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.SubHub"
+      "bundleIdentifier": "com.subhub.app"
     },
     "android": {
       "adaptiveIcon": {

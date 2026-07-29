@@ -29,7 +29,10 @@ export default function App() {
   const [isUpcomingModalVisible, setUpcomingModalVisible] = useState(false);
 
   const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active');
-  const totalBalance = activeSubscriptions.reduce((acc, sub) => acc + sub.price, 0);
+  const totalBalance = activeSubscriptions.reduce((acc, sub) => {
+    const price = sub.billing?.toLowerCase() === 'yearly' ? sub.price / 12 : sub.price;
+    return acc + price;
+  }, 0);
 
   const today = dayjs();
   const upcomingRenewalsThisMonth = activeSubscriptions

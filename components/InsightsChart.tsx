@@ -2,17 +2,20 @@ import { View, Text } from 'react-native';
 import React from 'react';
 import clsx from 'clsx';
 
-const DUMMY_DATA = [
-  { day: 'Mon', value: 35 },
-  { day: 'Tue', value: 30 },
-  { day: 'Wed', value: 23 },
-  { day: 'Thr', value: 43, highlighted: true, label: '$40' },
-  { day: 'Fri', value: 35 },
-  { day: 'Sat', value: 20 },
-  { day: 'Sun', value: 23 },
-];
+import { useSubscriptions } from '@/lib/SubscriptionsContext';
+import dayjs from 'dayjs';
 
 const InsightsChart = () => {
+  const { subscriptions } = useSubscriptions();
+  const startOfWeek = dayjs().startOf('week').add(1, 'day'); // Monday
+  
+  const DUMMY_DATA = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((dayStr, index) => {
+    const dayDate = startOfWeek.add(index, 'day');
+    const value = subscriptions
+      .filter(sub => sub.status === 'active' && dayjs(sub.renewalDate).isSame(dayDate, 'day'))
+      .reduce((sum, sub) => sum + sub.price, 0);
+    return { day: dayStr, value, highlighted: dayjs().isSame(dayDate, 'day') };
+  });
   return (
     <View className="bg-card rounded-3xl p-5 mb-5 border border-border">
       {/* Container for Y axis labels and chart area */}
@@ -41,11 +44,6 @@ const InsightsChart = () => {
               const heightPercentage = (item.value / 45) * 100;
               return (
                 <View key={index} className="items-center relative h-full justify-end">
-                  {item.highlighted && item.label && (
-                    <View className="bg-background px-2 py-1 rounded-md mb-2 shadow-sm border border-border absolute bottom-full mb-1">
-                      <Text className="text-accent text-xs font-sans-bold">{item.label}</Text>
-                    </View>
-                  )}
                   <View 
                     className={clsx(
                       "w-3.5 rounded-full",

@@ -5,8 +5,8 @@ import dayjs from 'dayjs';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useSubscriptions } from '@/lib/SubscriptionsContext';
 
-let dynamicCategories: string[] = [];
 const DEFAULT_CATEGORIES = ["Entertainment", "AI Tools", "Developer Tools", "Design", "Productivity", "Cloud", "Music"];
 const FREQUENCIES = ["Monthly", "Yearly"];
 const PAYMENT_METHODS = ["UPI", "Credit Card", "Debit Card", "Netbanking", "Other"];
@@ -25,10 +25,17 @@ const CATEGORY_COLORS: Record<string, string> = {
 interface CreateSubscriptionModalProps {
   visible: boolean;
   onClose: () => void;
-  onAdd: (subscription: any) => void;
+  onAdd: (subscription: any) => Promise<boolean> | void;
 }
 
 export default function CreateSubscriptionModal({ visible, onClose, onAdd }: CreateSubscriptionModalProps) {
+  const { subscriptions, globalCurrency } = useSubscriptions();
+  const dynamicCategories = Array.from(new Set(
+    subscriptions
+      .map(sub => sub.category)
+      .filter(cat => typeof cat === 'string' && cat && !DEFAULT_CATEGORIES.includes(cat) && cat !== 'Other')
+  ));
+
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [frequency, setFrequency] = useState('Monthly');
@@ -75,15 +82,12 @@ export default function CreateSubscriptionModal({ visible, onClose, onAdd }: Cre
     return 'wallet';
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isFormValid) return;
 
     let finalCategory = category;
     if (category === 'Other' && customCategory.trim() !== '') {
       finalCategory = customCategory.trim();
-      if (!dynamicCategories.includes(finalCategory)) {
-        dynamicCategories.push(finalCategory);
-      }
     }
 
     let finalStartDate = dayjs().toISOString();
@@ -94,7 +98,7 @@ export default function CreateSubscriptionModal({ visible, onClose, onAdd }: Cre
     const newSub = {
       name: name.trim(),
       price: numericPrice,
-      currency: "USD",
+      currency: globalCurrency,
       billing: frequency,
       category: finalCategory,
       paymentMethod,
@@ -105,17 +109,19 @@ export default function CreateSubscriptionModal({ visible, onClose, onAdd }: Cre
       color: CATEGORY_COLORS[finalCategory] || CATEGORY_COLORS[category] || "#d3d3d3",
     };
 
-    onAdd(newSub);
+    const success = await onAdd(newSub);
 
-    posthog.capture('subscription_created', {
-      subscription_name: name.trim(), 
-      subscription_price: numericPrice,
-      subscription_frequency: frequency, 
-      subscription_category: finalCategory,
-      payment_method: paymentMethod
-    });
+    if (success !== false) {
+      posthog.capture('subscription_created', {
+        subscription_name: name.trim(), 
+        subscription_price: numericPrice,
+        subscription_frequency: frequency, 
+        subscription_category: finalCategory,
+        payment_method: paymentMethod
+      });
 
-    handleClose();
+      handleClose();
+    }
   };
 
   return (
@@ -167,10 +173,11 @@ export default function CreateSubscriptionModal({ visible, onClose, onAdd }: Cre
                       key={freq}
                       onPress={() => {
                         setFrequency(freq);
+                        const baseDate = startDateSelection === 'Custom' ? dayjs(customStartDate) : dayjs();
                         if (freq === 'Monthly') {
-                          setRenewalDate(new Date(dayjs().add(1, 'month').toISOString()));
+                          setRenewalDate(new Date(baseDate.add(1, 'month').toISOString()));
                         } else {
-                          setRenewalDate(new Date(dayjs().add(1, 'year').toISOString()));
+                          setRenewalDate(new Date(baseDate.add(1, 'year').toISOString()));
                         }
                       }}
                       className={clsx("picker-option", frequency === freq && "picker-option-active")}

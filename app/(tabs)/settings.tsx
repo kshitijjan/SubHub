@@ -48,13 +48,17 @@ const Settings = () => {
 
       <View className="bg-card rounded-3xl border border-border p-6 mb-6">
         <Text className="text-lg font-sans-bold text-primary mb-4">Currency Settings</Text>
-        <View className="flex-row flex-wrap gap-3">
+        <View className="flex-row flex-wrap gap-3" accessibilityRole="radiogroup">
           {CURRENCIES.map(c => (
             <Pressable 
               key={c}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: globalCurrency === c }}
               onPress={() => {
                 setGlobalCurrency(c);
-                posthog.capture('currency_changed', { currency: c });
+                if (c !== globalCurrency) {
+                  posthog.capture('currency_changed', { currency: c });
+                }
               }}
               className={clsx("px-4 py-2 rounded-xl border border-border", globalCurrency === c && "bg-primary border-primary")}
             >

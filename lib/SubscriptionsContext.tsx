@@ -6,7 +6,7 @@ import dayjs from 'dayjs';
 
 interface SubscriptionsContextType {
   subscriptions: any[];
-  addSubscription: (sub: any) => void;
+  addSubscription: (sub: any) => Promise<boolean>;
   isLoading: boolean;
   refreshSubscriptions: () => Promise<void>;
   globalCurrency: string;
@@ -51,7 +51,7 @@ export const SubscriptionsProvider = ({ children }: { children: ReactNode }) => 
             
             // Roll forward until it is today or in the future
             while (renewalDayjs.isBefore(now, 'day')) {
-              if (sub.billing === 'Yearly') {
+              if (sub.billing?.toLowerCase() === 'yearly') {
                 renewalDayjs = renewalDayjs.add(1, 'year');
               } else {
                 renewalDayjs = renewalDayjs.add(1, 'month');
@@ -93,10 +93,10 @@ export const SubscriptionsProvider = ({ children }: { children: ReactNode }) => 
     }
   }, [userId, getToken]);
 
-  const addSubscription = async (newSub: any) => {
+  const addSubscription = async (newSub: any): Promise<boolean> => {
     try {
       const token = await getToken({ template: 'supabase' });
-      if (!token) return;
+      if (!token) return false;
 
       const supabase = createClerkSupabaseClient(token);
       
@@ -129,9 +129,12 @@ export const SubscriptionsProvider = ({ children }: { children: ReactNode }) => 
           icon: icons[data.icon_name as IconKey] || icons.home,
         };
         setSubscriptions(prev => [addedSub, ...prev]);
+        return true;
       }
+      return false;
     } catch (err) {
       console.error('Failed to add subscription', err);
+      return false;
     }
   };
 
