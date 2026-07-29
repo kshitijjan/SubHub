@@ -1,21 +1,21 @@
-import "@/global.css"
-import { Link } from "expo-router";
-import { FlatList, Image, Text, View, Pressable } from "react-native";
-import { styled } from 'nativewind'
-import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
-import images from "@/constants/images";
-import { HOME_BALANCE, HOME_USER, UPCOMING_SUBSCRIPTIONS } from "@/constants/data";
-import { icons } from "@/constants/icons";
-import { formatCurrency } from "@/lib/utils";
-import dayjs from 'dayjs';
 import ListHeading from "@/components/ListHeading";
-import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import SubscriptionCard from "@/components/SubscriptionCard";
-import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
-import { useState } from "react";
+import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
+import { HOME_BALANCE, HOME_SUBSCRIPTIONS, HOME_USER, UPCOMING_SUBSCRIPTIONS } from "@/constants/data";
+import { icons } from "@/constants/icons";
+import images from "@/constants/images";
+import "@/global.css";
+import { posthog } from '@/lib/posthog';
+import { formatCurrency } from "@/lib/utils";
 import { useSubscriptions } from "@/lib/SubscriptionsContext";
-import { useUser } from '@clerk/expo'
-import { posthog } from '@/lib/posthog'
+import { useUser } from '@clerk/expo';
+import dayjs from 'dayjs';
+import { styled } from 'nativewind';
+import { useState } from "react";
+import { FlatList, Image, Text, View, Pressable } from "react-native";
+import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
+import UpcomingRenewalsModal from "@/components/UpcomingRenewalsModal";
+import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 
 //SafeAreaView is the 3rd party component and does not support style so
 //nativewind need styled component to enable style support
@@ -23,16 +23,32 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 export default function App() {
   const { user } = useUser()
+  const { subscriptions, addSubscription, globalCurrency } = useSubscriptions();
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<String | null>(null)
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  
-  const { subscriptions, addSubscription } = useSubscriptions();
+  const [isModalVisible, setModalVisible] = useState(false);
+  const [isUpcomingModalVisible, setUpcomingModalVisible] = useState(false);
+
+  const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active');
+  const totalBalance = activeSubscriptions.reduce((acc, sub) => acc + sub.price, 0);
+
+  const today = dayjs();
+  const upcomingRenewalsThisMonth = activeSubscriptions
+    .filter(sub => sub.renewalDate && dayjs(sub.renewalDate).isSame(today, 'month'))
+    .map(sub => ({
+      id: sub.id,
+      name: sub.name,
+      icon: sub.icon,
+      price: sub.price,
+      currency: sub.currency,
+      daysLeft: dayjs(sub.renewalDate).diff(today, 'day'),
+    }))
+    .sort((a, b) => a.daysLeft - b.daysLeft);
 
   return (
     <SafeAreaView className="flex-1 bg-background p-5">
 
         <FlatList 
-          ListHeaderComponent={() => (
+          ListHeaderComponent={(
             <>
               <View className="home-header">
                 <View className="home-user">
@@ -45,11 +61,7 @@ export default function App() {
                   </Text>
                 </View>
 
-                <Pressable 
-                  onPress={() => setIsModalVisible(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Add subscription"
-                >
+                <Pressable onPress={() => setModalVisible(true)}>
                   <Image source={icons.add} className="home-add-icon" />
                 </Pressable>
               </View>
@@ -58,7 +70,7 @@ export default function App() {
                 <Text className="home-balance-label">Balance</Text>
                 <View className="home-balance-row">
                   <Text className="home-balance-amount">
-                    {formatCurrency(HOME_BALANCE.amount)}
+                    {formatCurrency(totalBalance, globalCurrency)}
                   </Text>
                   <Text className="home-balance-date">
                     {dayjs(HOME_BALANCE.nextRenewalDate).format('MM/DD')}
@@ -67,9 +79,9 @@ export default function App() {
               </View>
 
               <View className="mb-5">
-                <ListHeading title="Upcoming"/>
+                <ListHeading title="Upcoming" onPress={() => setUpcomingModalVisible(true)} />
                 <FlatList
-                  data={UPCOMING_SUBSCRIPTIONS}
+                  data={upcomingRenewalsThisMonth.slice(0, 4)}
                   renderItem={({ item }) => (<UpcomingSubscriptionCard {...item} />)}
                   keyExtractor={(item) => item.id}
                   horizontal
@@ -108,12 +120,21 @@ export default function App() {
             ListEmptyComponent={<Text className="home-empty-state">No subscriptions yet</Text>}
             contentContainerClassName="pb-30"
           />
-
-        <CreateSubscriptionModal
-          visible={isModalVisible}
-          onClose={() => setIsModalVisible(false)}
-          onAdd={addSubscription}
-        />
+          
+        {isModalVisible && (
+          <CreateSubscriptionModal
+            visible={isModalVisible}
+            onClose={() => setModalVisible(false)}
+            onAdd={addSubscription}
+          />
+        )}
+        {isUpcomingModalVisible && (
+          <UpcomingRenewalsModal
+            visible={isUpcomingModalVisible}
+            onClose={() => setUpcomingModalVisible(false)}
+            renewals={upcomingRenewalsThisMonth}
+          />
+        )}
     </SafeAreaView>
   );
 } 

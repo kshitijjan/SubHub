@@ -13,16 +13,19 @@ export function formatCurrency(value: number, currency: string = 'INR'): string 
     const uppercaseCurrency = currency.toUpperCase();
     const locale = uppercaseCurrency === 'INR' ? 'en-IN' : 'en-US';
     
+    const hasDecimal = value % 1 !== 0;
+
     return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: uppercaseCurrency,
-      minimumFractionDigits: 2,
+      minimumFractionDigits: hasDecimal ? 2 : 0,
       maximumFractionDigits: 2,
     }).format(value);
   } catch (error) {
     console.error("Error formatting currency with Intl.NumberFormat, falling back:", error);
     try {
-      const formattedValue = (value || 0).toFixed(2);
+      const hasDecimal = value % 1 !== 0;
+      const formattedValue = hasDecimal ? (value || 0).toFixed(2) : Math.round(value || 0).toString();
       const uppercaseCurrency = (currency || 'INR').toUpperCase();
       if (uppercaseCurrency === 'INR') {
         return `₹${formattedValue}`;

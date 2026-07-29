@@ -5,12 +5,17 @@ import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { useAuth, useUser } from '@clerk/expo'
 import images from '@/constants/images'
 import { posthog } from '@/lib/posthog'
+import { useSubscriptions } from '@/lib/SubscriptionsContext'
+import clsx from 'clsx'
 
 const SafeAreaView = styled(RNSafeAreaView);
+
+const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'AUD', 'CAD'];
 
 const Settings = () => {
   const { signOut } = useAuth()
   const { user } = useUser()
+  const { globalCurrency, setGlobalCurrency } = useSubscriptions()
 
   const handleSignOut = async () => {
     try {
@@ -40,6 +45,24 @@ const Settings = () => {
           </Text>
         </View>
       ) : null}
+
+      <View className="bg-card rounded-3xl border border-border p-6 mb-6">
+        <Text className="text-lg font-sans-bold text-primary mb-4">Currency Settings</Text>
+        <View className="flex-row flex-wrap gap-3">
+          {CURRENCIES.map(c => (
+            <Pressable 
+              key={c}
+              onPress={() => {
+                setGlobalCurrency(c);
+                posthog.capture('currency_changed', { currency: c });
+              }}
+              className={clsx("px-4 py-2 rounded-xl border border-border", globalCurrency === c && "bg-primary border-primary")}
+            >
+              <Text className={clsx("font-sans-semibold", globalCurrency === c ? "text-white" : "text-primary")}>{c}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
 
       <View className="mt-auto pb-20">
         <Pressable 
