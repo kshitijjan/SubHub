@@ -1,9 +1,9 @@
 import { View, Text, Dimensions } from 'react-native';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { BarChart } from 'react-native-gifted-charts';
 
 import { useSubscriptions } from '@/lib/SubscriptionsContext';
-import { isActiveInMonth } from '@/lib/utils';
+import { getMonthlyTotal } from '@/lib/utils';
 import dayjs from 'dayjs';
 
 interface InsightsChartProps {
@@ -19,10 +19,8 @@ const InsightsChart = ({ selectedMonth, onSelectMonth }: InsightsChartProps) => 
   // Only show bars up to the current month
   const months = allMonths.slice(0, currentMonth + 1);
   
-  const barData = months.map((monthStr, index) => {
-    const activeSubsForMonth = subscriptions.filter(sub => isActiveInMonth(sub, index, dayjs().year()));
-
-    const value = activeSubsForMonth.reduce((sum, sub) => sum + sub.price, 0);
+  const barData = useMemo(() => months.map((monthStr, index) => {
+    const value = getMonthlyTotal(subscriptions, index, dayjs().year());
       
     const isSelected = index === selectedMonth;
     return { 
@@ -38,7 +36,7 @@ const InsightsChart = ({ selectedMonth, onSelectMonth }: InsightsChartProps) => 
         </View>
       )
     };
-  });
+  }), [subscriptions, selectedMonth, months]);
 
   const maxValueFromData = Math.max(...barData.map(d => d.value));
   // Add 15% extra headroom to avoid top label clipping.

@@ -47,7 +47,13 @@ export const formatStatusLabel = (value?: string): string => {
   return value.charAt(0).toUpperCase() + value.slice(1);
 };
 
-export const isActiveInMonth = (sub: any, targetMonth: number, targetYear: number): boolean => {
+export const getMonthlyTotal = (subscriptions: Subscription[], targetMonth: number, targetYear: number): number => {
+  return subscriptions
+    .filter(sub => isActiveInMonth(sub, targetMonth, targetYear))
+    .reduce((acc, sub) => acc + sub.price, 0);
+};
+
+export const isActiveInMonth = (sub: Subscription, targetMonth: number, targetYear: number): boolean => {
   if (sub.status !== 'active') return false;
   
   let startMonth = 0;
@@ -57,6 +63,7 @@ export const isActiveInMonth = (sub: any, targetMonth: number, targetYear: numbe
   // We don't use created_at because a user might add a 5-year old subscription today.
   if (sub.startDate) {
     const dateObj = dayjs(sub.startDate);
+    if (!dateObj.isValid()) return false;
     startMonth = dateObj.month();
     startYear = dateObj.year();
   } else {

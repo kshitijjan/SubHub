@@ -6,7 +6,7 @@ import { icons } from "@/constants/icons";
 import images from "@/constants/images";
 import "@/global.css";
 import { posthog } from '@/lib/posthog';
-import { formatCurrency, isActiveInMonth } from "@/lib/utils";
+import { formatCurrency, getMonthlyTotal } from "@/lib/utils";
 import { useSubscriptions } from "@/lib/SubscriptionsContext";
 import { useAuth, useUser } from '@clerk/expo';
 import dayjs from 'dayjs';
@@ -81,12 +81,18 @@ export default function App() {
   }, [user, getToken]);
 
   useEffect(() => {
-    // Only pick random subscriptions once when data is loaded
-    if (subscriptions.length > 0 && randomSubIds.length === 0) {
-      const ids = [...subscriptions].sort(() => Math.random() - 0.5).slice(0, 5).map(s => s.id);
-      setRandomSubIds(ids);
-    }
-  }, [subscriptions, randomSubIds.length]);
+    setRandomSubIds(prevIds => {
+      if (subscriptions.length === 0) return [];
+      
+      const validIds = prevIds.filter(id => subscriptions.some(sub => sub.id === id));
+      
+      if (validIds.length === 0) {
+        return [...subscriptions].sort(() => Math.random() - 0.5).slice(0, 5).map(s => s.id);
+      }
+      
+      return validIds.length === prevIds.length ? prevIds : validIds;
+    });
+  }, [subscriptions]);
 
   const randomSubscriptions = useMemo(() => {
     if (randomSubIds.length === 0) return subscriptions.slice(0, 5);
@@ -95,8 +101,7 @@ export default function App() {
 
   const currentMonth = dayjs().month();
   const currentYear = dayjs().year();
-  const activeSubsForMonth = subscriptions.filter(sub => isActiveInMonth(sub, currentMonth, currentYear));
-  const totalBalance = activeSubsForMonth.reduce((acc, sub) => acc + sub.price, 0);
+  const totalBalance = getMonthlyTotal(subscriptions, currentMonth, currentYear);
   
   const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active');
 
@@ -136,7 +141,7 @@ export default function App() {
               </View>
 
               <View className="home-balance-card">
-                <Text className="home-balance-label">This Month's Total</Text>
+                <Text className="home-balance-label">This Month&apos;s Total</Text>
                 <View className="home-balance-row">
                   <Text className="home-balance-amount">
                     {formatCurrency(totalBalance, globalCurrency)}
@@ -156,7 +161,7 @@ export default function App() {
                   />
 
               </View>
-              <ListHeading title="All Subscriptions" onPress={() => router.push('/(tabs)/subscriptions')} />
+              <ListHeading title="Subscriptions Preview" onPress={() => router.push('/(tabs)/subscriptions')} />
             </>
           )}
           data={randomSubscriptions}

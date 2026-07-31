@@ -106,9 +106,10 @@ const getDomainFromName = (name: string) => {
   const normalized = (name || '').toLowerCase().trim();
   if (DOMAIN_MAP[normalized]) return DOMAIN_MAP[normalized];
   
-  for (const [key, domain] of Object.entries(DOMAIN_MAP)) {
+  const sortedKeys = Object.keys(DOMAIN_MAP).sort((a, b) => b.length - a.length);
+  for (const key of sortedKeys) {
     if (normalized.includes(key)) {
-      return domain;
+      return DOMAIN_MAP[key];
     }
   }
 
@@ -308,7 +309,7 @@ export const SubscriptionsProvider = ({ children }: { children: ReactNode }) => 
         .select()
         .single();
 
-      if (error) {
+      if (error && error.code === 'PGRST204') {
         const fallback1 = await supabase
           .from('subscriptions')
           .update({ ...updatesToUpdate, payment_method: paymentMethod })
@@ -316,8 +317,7 @@ export const SubscriptionsProvider = ({ children }: { children: ReactNode }) => 
           .select()
           .single();
           
-        if (fallback1.error) {
-          console.warn("Column 'paymentMethod' and 'payment_method' not found. Updating without it.");
+        if (fallback1.error && fallback1.error.code === 'PGRST204') {
           const fallback2 = await supabase
             .from('subscriptions')
             .update(updatesToUpdate)
@@ -329,8 +329,11 @@ export const SubscriptionsProvider = ({ children }: { children: ReactNode }) => 
           data = fallback2.data;
         } else {
           data = fallback1.data;
+          error = fallback1.error;
         }
       }
+
+      if (error) throw error;
       
       if (data) {
         setSubscriptions(prev => prev.map(sub => {

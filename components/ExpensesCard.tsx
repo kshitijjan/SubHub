@@ -1,7 +1,7 @@
 import { View, Text } from 'react-native';
 import React from 'react';
 import { useSubscriptions } from '@/lib/SubscriptionsContext';
-import { formatCurrency, isActiveInMonth } from '@/lib/utils';
+import { formatCurrency, getMonthlyTotal } from '@/lib/utils';
 import dayjs from 'dayjs';
 
 interface ExpensesCardProps {
@@ -11,9 +11,7 @@ interface ExpensesCardProps {
 const ExpensesCard = ({ selectedMonth }: ExpensesCardProps) => {
   const { subscriptions, globalCurrency } = useSubscriptions();
   
-  const activeSubsForMonth = subscriptions.filter(sub => isActiveInMonth(sub, selectedMonth, dayjs().year()));
-
-  const totalBalance = activeSubsForMonth.reduce((acc, sub) => acc + sub.price, 0);
+  const totalBalance = getMonthlyTotal(subscriptions, selectedMonth, dayjs().year());
 
   // We want to show "Month Year" for the selected month.
   const monthString = dayjs().month(selectedMonth).format('MMMM YYYY');
