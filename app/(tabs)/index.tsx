@@ -6,13 +6,14 @@ import { icons } from "@/constants/icons";
 import images from "@/constants/images";
 import "@/global.css";
 import { posthog } from '@/lib/posthog';
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, isActiveInMonth } from "@/lib/utils";
 import { useSubscriptions } from "@/lib/SubscriptionsContext";
 import { useUser } from '@clerk/expo';
 import dayjs from 'dayjs';
 import { styled } from 'nativewind';
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { FlatList, Image, Text, View, Pressable } from "react-native";
+import { useRouter } from 'expo-router';
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import UpcomingRenewalsModal from "@/components/UpcomingRenewalsModal";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
@@ -22,17 +23,33 @@ import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 const SafeAreaView = styled(RNSafeAreaView);
 
 export default function App() {
+  const router = useRouter();
   const { user } = useUser()
   const { subscriptions, addSubscription, globalCurrency } = useSubscriptions();
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<String | null>(null)
   const [isModalVisible, setModalVisible] = useState(false);
   const [isUpcomingModalVisible, setUpcomingModalVisible] = useState(false);
+  const [randomSubIds, setRandomSubIds] = useState<string[]>([]);
 
+  useEffect(() => {
+    // Only pick random subscriptions once when data is loaded
+    if (subscriptions.length > 0 && randomSubIds.length === 0) {
+      const ids = [...subscriptions].sort(() => Math.random() - 0.5).slice(0, 5).map(s => s.id);
+      setRandomSubIds(ids);
+    }
+  }, [subscriptions, randomSubIds.length]);
+
+  const randomSubscriptions = useMemo(() => {
+    if (randomSubIds.length === 0) return subscriptions.slice(0, 5);
+    return randomSubIds.map(id => subscriptions.find(sub => sub.id === id)).filter(Boolean);
+  }, [subscriptions, randomSubIds]);
+
+  const currentMonth = dayjs().month();
+  const currentYear = dayjs().year();
+  const activeSubsForMonth = subscriptions.filter(sub => isActiveInMonth(sub, currentMonth, currentYear));
+  const totalBalance = activeSubsForMonth.reduce((acc, sub) => acc + sub.price, 0);
+  
   const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active');
-  const totalBalance = activeSubscriptions.reduce((acc, sub) => {
-    const price = sub.billing?.toLowerCase() === 'yearly' ? sub.price / 12 : sub.price;
-    return acc + price;
-  }, 0);
 
   const today = dayjs();
   const upcomingRenewalsThisMonth = activeSubscriptions
@@ -70,13 +87,10 @@ export default function App() {
               </View>
 
               <View className="home-balance-card">
-                <Text className="home-balance-label">Balance</Text>
+                <Text className="home-balance-label">This Month's Total</Text>
                 <View className="home-balance-row">
                   <Text className="home-balance-amount">
                     {formatCurrency(totalBalance, globalCurrency)}
-                  </Text>
-                  <Text className="home-balance-date">
-                    {dayjs(HOME_BALANCE.nextRenewalDate).format('MM/DD')}
                   </Text>
                 </View>
               </View>
@@ -93,10 +107,10 @@ export default function App() {
                   />
 
               </View>
-              <ListHeading title="All Subscriptions"/>
+              <ListHeading title="All Subscriptions" onPress={() => router.push('/(tabs)/subscriptions')} />
             </>
           )}
-          data={subscriptions}
+          data={randomSubscriptions}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <SubscriptionCard

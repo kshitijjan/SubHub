@@ -1,16 +1,18 @@
-import { View, Text, TextInput, FlatList, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, Text, TextInput, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native'
 import React, { useState, useMemo } from 'react'
 import { styled } from 'nativewind'
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import SubscriptionCard from '@/components/SubscriptionCard';
+import EditSubscriptionModal from '@/components/EditSubscriptionModal';
 import { useSubscriptions } from "@/lib/SubscriptionsContext";
 
 const SafeAreaView = styled(RNSafeAreaView);
 
 const Subscriptions = () => {
-  const { subscriptions } = useSubscriptions();
+  const { subscriptions, deleteSubscription, updateSubscription } = useSubscriptions();
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingSubscription, setEditingSubscription] = useState<any | null>(null);
 
   const filteredSubscriptions = useMemo(() => {
     return subscriptions.filter(sub => 
@@ -19,6 +21,26 @@ const Subscriptions = () => {
       (sub.plan && sub.plan.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   }, [searchQuery, subscriptions]);
+
+  const handleDelete = (id: string, name: string) => {
+    Alert.alert(
+      "Delete Subscription",
+      `Are you sure you want to delete ${name}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive",
+          onPress: async () => {
+            const success = await deleteSubscription(id);
+            if (success && expandedId === id) {
+              setExpandedId(null);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   return (
     <SafeAreaView className='flex-1 bg-background p-5'>
@@ -47,6 +69,8 @@ const Subscriptions = () => {
               {...item}
               expanded={expandedId === item.id}
               onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}
+              onDeletePress={() => handleDelete(item.id, item.name)}
+              onEditPress={() => setEditingSubscription(item)}
             />
           )}
           contentContainerStyle={{ paddingBottom: 40, gap: 12 }}
@@ -56,6 +80,12 @@ const Subscriptions = () => {
           automaticallyAdjustKeyboardInsets={true}
         />
       </KeyboardAvoidingView>
+      <EditSubscriptionModal
+        visible={!!editingSubscription}
+        onClose={() => setEditingSubscription(null)}
+        subscription={editingSubscription}
+        onEdit={updateSubscription}
+      />
     </SafeAreaView>
   )
 }

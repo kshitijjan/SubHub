@@ -1,15 +1,22 @@
 import { View, Text, Image } from 'react-native'
-import React from 'react'
+import React, { useState } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import { useSubscriptions } from '@/lib/SubscriptionsContext'
 
 
 const UpcomingSubscriptionCard = ( { name, price, currency, daysLeft, icon }: UpcomingSubscriptionCardProps) => {
   const { globalCurrency } = useSubscriptions();
+  const [imgError, setImgError] = useState(false);
+  const fallbackUri = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&bold=true`;
+
   return (
     <View className='upcoming-card'>
         <View className='upcoming-row'>
-            <Image source={icon} className='upcoming-icon'></Image>
+            <Image 
+              source={imgError ? { uri: fallbackUri } : icon} 
+              onError={() => setImgError(true)}
+              className='upcoming-icon'
+            />
             <View>
                 <Text className='upcoming-price'>{formatCurrency(price, globalCurrency)}</Text>
                 <Text className='upcoming-meta' numberOfLines={1}>

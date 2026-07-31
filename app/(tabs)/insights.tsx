@@ -1,5 +1,6 @@
 import { View, Text, Image, TouchableOpacity, FlatList } from 'react-native';
 import React, { useState } from 'react';
+import dayjs from 'dayjs';
 import { styled } from 'nativewind';
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import ListHeading from '@/components/ListHeading';
@@ -10,6 +11,7 @@ import InsightsChart from '@/components/InsightsChart';
 import ExpensesCard from '@/components/ExpensesCard';
 import { useRouter } from 'expo-router';
 import { posthog } from '@/lib/posthog';
+import { isActiveInMonth } from '@/lib/utils';
 
 const SafeAreaView = styled(RNSafeAreaView);
 
@@ -17,6 +19,12 @@ const Insights = () => {
   const { subscriptions } = useSubscriptions();
   const router = useRouter();
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<String | null>(null);
+  
+  const currentMonth = dayjs().month();
+  const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
+
+  const activeSubsForMonth = subscriptions.filter(sub => isActiveInMonth(sub, selectedMonth, dayjs().year()));
+
 
   return (
     <SafeAreaView className='flex-1 bg-background p-5'>
@@ -41,16 +49,16 @@ const Insights = () => {
 
             {/* Upcoming Section */}
             <ListHeading title="Upcoming" />
-            <InsightsChart />
+            <InsightsChart selectedMonth={selectedMonth} onSelectMonth={setSelectedMonth} />
 
             {/* Expenses Card */}
-            <ExpensesCard />
+            <ExpensesCard selectedMonth={selectedMonth} />
 
             {/* History Section */}
             <ListHeading title="History" />
           </>
         )}
-        data={subscriptions}
+        data={activeSubsForMonth}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <SubscriptionCard

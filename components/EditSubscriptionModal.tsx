@@ -22,13 +22,14 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Other": "#d3d3d3",
 };
 
-interface CreateSubscriptionModalProps {
+interface EditSubscriptionModalProps {
   visible: boolean;
   onClose: () => void;
-  onAdd: (subscription: any) => Promise<boolean> | void;
+  onEdit: (id: string, updates: any) => Promise<boolean> | void;
+  subscription: any;
 }
 
-export default function CreateSubscriptionModal({ visible, onClose, onAdd }: CreateSubscriptionModalProps) {
+export default function EditSubscriptionModal({ visible, onClose, onEdit, subscription }: EditSubscriptionModalProps) {
   const { subscriptions, globalCurrency } = useSubscriptions();
   const dynamicCategories = Array.from(new Set(
     subscriptions
@@ -52,6 +53,48 @@ export default function CreateSubscriptionModal({ visible, onClose, onAdd }: Cre
   const [showRenewalDatePicker, setShowRenewalDatePicker] = useState(false);
 
   const allCategories = [...DEFAULT_CATEGORIES, ...dynamicCategories, "Other"];
+
+  React.useEffect(() => {
+    if (subscription && visible) {
+      setName(subscription.name || '');
+      setPrice(subscription.price?.toString() || '');
+      setFrequency(subscription.billing || 'Monthly');
+      setPaymentMethod(subscription.paymentMethod || subscription.payment_method || 'UPI');
+      
+      const isDefaultCat = DEFAULT_CATEGORIES.includes(subscription.category) || dynamicCategories.includes(subscription.category);
+      if (subscription.category) {
+        if (isDefaultCat) {
+          setCategory(subscription.category);
+          setCustomCategory('');
+        } else {
+          setCategory('Other');
+          setCustomCategory(subscription.category);
+        }
+      } else {
+        setCategory('Other');
+        setCustomCategory('');
+      }
+
+      if (subscription.startDate) {
+        const sd = dayjs(subscription.startDate);
+        if (sd.isSame(dayjs(), 'day')) {
+          setStartDateSelection('Today');
+        } else {
+          setStartDateSelection('Custom');
+        }
+        setCustomStartDate(sd.toDate());
+      } else {
+        setStartDateSelection('Today');
+        setCustomStartDate(new Date());
+      }
+
+      if (subscription.renewalDate) {
+        setRenewalDate(dayjs(subscription.renewalDate).toDate());
+      } else {
+        setRenewalDate(new Date(dayjs().add(1, 'month').toISOString()));
+      }
+    }
+  }, [subscription, visible]);
 
   const handleClose = () => {
     setName('');
@@ -95,24 +138,24 @@ export default function CreateSubscriptionModal({ visible, onClose, onAdd }: Cre
       finalStartDate = customStartDate.toISOString();
     }
     
-    const newSub = {
+    const updates = {
       name: name.trim(),
       price: numericPrice,
       currency: globalCurrency,
       billing: frequency,
       category: finalCategory,
       paymentMethod,
-      status: "active",
       startDate: finalStartDate,
       renewalDate: renewalDate.toISOString(),
       icon_name: getIconForName(name),
       color: CATEGORY_COLORS[finalCategory] || CATEGORY_COLORS[category] || "#d3d3d3",
     };
 
-    const success = await onAdd(newSub);
+    const success = await onEdit(subscription.id, updates);
 
     if (success !== false) {
-      posthog.capture('subscription_created', {
+      posthog.capture('subscription_updated', {
+        subscription_id: subscription.id,
         subscription_name: name.trim(), 
         subscription_price: numericPrice,
         subscription_frequency: frequency, 
@@ -135,7 +178,7 @@ export default function CreateSubscriptionModal({ visible, onClose, onAdd }: Cre
           
           <View className="modal-container h-[85%]">
             <View className="modal-header">
-              <Text className="modal-title">New Subscription</Text>
+              <Text className="modal-title">Edit Subscription</Text>
               <Pressable onPress={handleClose} className="modal-close">
                 <Text className="modal-close-text">✕</Text>
               </Pressable>
@@ -325,7 +368,7 @@ export default function CreateSubscriptionModal({ visible, onClose, onAdd }: Cre
                 disabled={!isFormValid}
                 className={clsx("auth-button", !isFormValid && "auth-button-disabled")}
               >
-                <Text className="auth-button-text">Create Subscription</Text>
+                <Text className="auth-button-text">Update Subscription</Text>
               </Pressable>
             </ScrollView>
           </View>
