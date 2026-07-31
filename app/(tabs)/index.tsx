@@ -6,33 +6,104 @@ import { icons } from "@/constants/icons";
 import images from "@/constants/images";
 import "@/global.css";
 import { posthog } from '@/lib/posthog';
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, getMonthlyTotal } from "@/lib/utils";
 import { useSubscriptions } from "@/lib/SubscriptionsContext";
-import { useUser } from '@clerk/expo';
+import { useAuth, useUser } from '@clerk/expo';
 import dayjs from 'dayjs';
 import { styled } from 'nativewind';
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { FlatList, Image, Text, View, Pressable } from "react-native";
+import { useRouter } from 'expo-router';
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import UpcomingRenewalsModal from "@/components/UpcomingRenewalsModal";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
+import { createClerkSupabaseClient } from '@/lib/supabase';
 
 //SafeAreaView is the 3rd party component and does not support style so
 //nativewind need styled component to enable style support
 const SafeAreaView = styled(RNSafeAreaView);
 
 export default function App() {
+  const router = useRouter();
   const { user } = useUser()
   const { subscriptions, addSubscription, globalCurrency } = useSubscriptions();
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<String | null>(null)
   const [isModalVisible, setModalVisible] = useState(false);
   const [isUpcomingModalVisible, setUpcomingModalVisible] = useState(false);
+  const [randomSubIds, setRandomSubIds] = useState<string[]>([]);
+  const [dbName, setDbName] = useState<string | null>(null);
 
+  const { getToken } = useAuth();
+
+  useEffect(() => {
+    const syncUserToSupabase = async () => {
+      if (!user) return;
+      try {
+        const token = await getToken({ template: 'supabase' });
+        if (!token) return;
+        const supabase = createClerkSupabaseClient(token);
+        
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', user.id)
+          .maybeSingle();
+          
+        if (existingUser) {
+          setDbName(existingUser.name);
+        } else {
+          // Determine name to use
+          const nameToUse = user.fullName || user.primaryEmailAddress?.emailAddress?.split('@')[0] || HOME_USER.name;
+          
+          // Insert user
+          const { error } = await supabase.from('users').insert({
+            id: user.id,
+            name: nameToUse,
+            email: user.primaryEmailAddress?.emailAddress
+          });
+          
+          if (!error) {
+            setDbName(nameToUse);
+          } else if (error) {
+            if (error.code !== '23505') {
+              console.error("Error inserting user:", error);
+            }
+            // Fallback to displaying Clerk name if DB insert fails or row already exists
+            setDbName(nameToUse);
+          }
+        }
+      } catch (err) {
+        console.error("Error syncing user:", err);
+      }
+    };
+    
+    syncUserToSupabase();
+  }, [user, getToken]);
+
+  useEffect(() => {
+    setRandomSubIds(prevIds => {
+      if (subscriptions.length === 0) return [];
+      
+      const validIds = prevIds.filter(id => subscriptions.some(sub => sub.id === id));
+      
+      if (validIds.length === 0) {
+        return [...subscriptions].sort(() => Math.random() - 0.5).slice(0, 5).map(s => s.id);
+      }
+      
+      return validIds.length === prevIds.length ? prevIds : validIds;
+    });
+  }, [subscriptions]);
+
+  const randomSubscriptions = useMemo(() => {
+    if (randomSubIds.length === 0) return subscriptions.slice(0, 5);
+    return randomSubIds.map(id => subscriptions.find(sub => sub.id === id)).filter(Boolean);
+  }, [subscriptions, randomSubIds]);
+
+  const currentMonth = dayjs().month();
+  const currentYear = dayjs().year();
+  const totalBalance = getMonthlyTotal(subscriptions, currentMonth, currentYear);
+  
   const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active');
-  const totalBalance = activeSubscriptions.reduce((acc, sub) => {
-    const price = sub.billing?.toLowerCase() === 'yearly' ? sub.price / 12 : sub.price;
-    return acc + price;
-  }, 0);
 
   const today = dayjs();
   const upcomingRenewalsThisMonth = activeSubscriptions
@@ -60,7 +131,7 @@ export default function App() {
                     className="home-avatar" 
                   />
                   <Text className="home-user-name">
-                    {user?.fullName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || HOME_USER.name}
+                    {dbName || user?.fullName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || HOME_USER.name}
                   </Text>
                 </View>
 
@@ -70,13 +141,10 @@ export default function App() {
               </View>
 
               <View className="home-balance-card">
-                <Text className="home-balance-label">Balance</Text>
+                <Text className="home-balance-label">This Month&apos;s Total</Text>
                 <View className="home-balance-row">
                   <Text className="home-balance-amount">
                     {formatCurrency(totalBalance, globalCurrency)}
-                  </Text>
-                  <Text className="home-balance-date">
-                    {dayjs(HOME_BALANCE.nextRenewalDate).format('MM/DD')}
                   </Text>
                 </View>
               </View>
@@ -93,10 +161,10 @@ export default function App() {
                   />
 
               </View>
-              <ListHeading title="All Subscriptions"/>
+              <ListHeading title="Subscriptions Preview" onPress={() => router.push('/(tabs)/subscriptions')} />
             </>
           )}
-          data={subscriptions}
+          data={randomSubscriptions}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <SubscriptionCard

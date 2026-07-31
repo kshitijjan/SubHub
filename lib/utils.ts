@@ -46,3 +46,40 @@ export const formatStatusLabel = (value?: string): string => {
   if (!value) return "Unknown";
   return value.charAt(0).toUpperCase() + value.slice(1);
 };
+
+export const getMonthlyTotal = (subscriptions: Subscription[], targetMonth: number, targetYear: number): number => {
+  return subscriptions
+    .filter(sub => isActiveInMonth(sub, targetMonth, targetYear))
+    .reduce((acc, sub) => acc + sub.price, 0);
+};
+
+export const isActiveInMonth = (sub: Subscription, targetMonth: number, targetYear: number): boolean => {
+  if (sub.status !== 'active') return false;
+  
+  let startMonth = 0;
+  let startYear = targetYear; 
+  
+  // Only use startDate if the user explicitly provided one.
+  // We don't use created_at because a user might add a 5-year old subscription today.
+  if (sub.startDate) {
+    const dateObj = dayjs(sub.startDate);
+    if (!dateObj.isValid()) return false;
+    startMonth = dateObj.month();
+    startYear = dateObj.year();
+  } else {
+    // If no explicit startDate, assume it has been active for the whole year
+    startMonth = 0;
+    startYear = targetYear - 1; 
+  }
+
+  if (startYear > targetYear) return false;
+  if (startYear === targetYear && targetMonth < startMonth) return false;
+
+  const renewalMonth = dayjs(sub.renewalDate).month();
+  
+  if (sub.billing?.toLowerCase() === 'monthly') {
+     return true;
+  }
+  
+  return renewalMonth === targetMonth;
+};

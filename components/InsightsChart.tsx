@@ -1,70 +1,75 @@
-import { View, Text } from 'react-native';
-import React from 'react';
-import clsx from 'clsx';
+import { View, Text, Dimensions } from 'react-native';
+import React, { useMemo } from 'react';
+import { BarChart } from 'react-native-gifted-charts';
 
 import { useSubscriptions } from '@/lib/SubscriptionsContext';
+import { getMonthlyTotal } from '@/lib/utils';
 import dayjs from 'dayjs';
 
-const InsightsChart = () => {
+interface InsightsChartProps {
+  selectedMonth: number;
+  onSelectMonth: (month: number) => void;
+}
+
+const InsightsChart = ({ selectedMonth, onSelectMonth }: InsightsChartProps) => {
   const { subscriptions } = useSubscriptions();
-  const startOfWeek = dayjs().startOf('week').add(1, 'day'); // Monday
   
-  const DUMMY_DATA = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((dayStr, index) => {
-    const dayDate = startOfWeek.add(index, 'day');
-    const value = subscriptions
-      .filter(sub => sub.status === 'active' && dayjs(sub.renewalDate).isSame(dayDate, 'day'))
-      .reduce((sum, sub) => sum + sub.price, 0);
-    return { day: dayStr, value, highlighted: dayjs().isSame(dayDate, 'day') };
-  });
+  const currentMonth = dayjs().month();
+  const allMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  // Only show bars up to the current month
+  const months = allMonths.slice(0, currentMonth + 1);
+  
+  const barData = useMemo(() => months.map((monthStr, index) => {
+    const value = getMonthlyTotal(subscriptions, index, dayjs().year());
+      
+    const isSelected = index === selectedMonth;
+    return { 
+      value: value, 
+      label: monthStr, 
+      frontColor: isSelected ? '#ea7a53' : '#081126',
+      onPress: () => onSelectMonth(index),
+      topLabelComponent: () => (
+        <View className="w-8 -ml-2 items-center justify-center">
+          <Text className="text-[10px] font-sans-medium text-primary text-center">
+            {value > 0 ? Math.round(value) : ''}
+          </Text>
+        </View>
+      )
+    };
+  }), [subscriptions, selectedMonth, months]);
+
+  const maxValueFromData = Math.max(...barData.map(d => d.value));
+  // Add 15% extra headroom to avoid top label clipping.
+  const maxValue = Math.max(maxValueFromData, 45) * 1.15; 
+
+
+  // Dynamically calculate spacing based on number of visible items
+  const screenWidth = Dimensions.get('window').width;
+  const availableWidth = screenWidth - 120; 
+  const barWidth = 14;
+  const numItems = barData.length;
+  // Distribute spacing but cap it so bars don't look too far apart if there are only a few months
+  const spacing = numItems > 0 ? Math.min((availableWidth - (numItems * barWidth)) / numItems, 35) : 15;
+
   return (
     <View className="bg-card rounded-3xl p-5 mb-5 border border-border">
-      {/* Container for Y axis labels and chart area */}
-      <View className="flex-row">
-        {/* Y-axis labels */}
-        <View className="justify-between h-48 py-2 pr-2 border-r border-transparent">
-          {[45, 35, 25, 5, 0].map((val, idx) => (
-            <Text key={idx} className="text-muted-foreground text-xs font-sans-medium w-6 text-right">
-              {val}
-            </Text>
-          ))}
-        </View>
-
-        {/* Chart area */}
-        <View className="flex-1 relative h-48 ml-2">
-          {/* Horizontal lines */}
-          <View className="absolute inset-0 justify-between py-2">
-            {[45, 35, 25, 5, 0].map((_, idx) => (
-              <View key={idx} className="w-full h-[1px] border-b border-black/10 border-dashed" />
-            ))}
-          </View>
-
-          {/* Bars */}
-          <View className="flex-1 flex-row items-end justify-between pb-2 z-10 px-2">
-            {DUMMY_DATA.map((item, index) => {
-              const heightPercentage = (item.value / 45) * 100;
-              return (
-                <View key={index} className="items-center relative h-full justify-end">
-                  <View 
-                    className={clsx(
-                      "w-3.5 rounded-full",
-                      item.highlighted ? "bg-accent" : "bg-primary"
-                    )} 
-                    style={{ height: `${heightPercentage}%` }}
-                  />
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      </View>
-
-      {/* X-axis labels */}
-      <View className="flex-row justify-between ml-10 px-2 mt-2">
-        {DUMMY_DATA.map((item, index) => (
-          <Text key={index} className="text-muted-foreground text-xs font-sans-medium text-center w-8">
-            {item.day}
-          </Text>
-        ))}
+      <View className="ml-[-10px] mt-2">
+        <BarChart
+          data={barData}
+          barWidth={barWidth}
+          spacing={spacing}
+          roundedTop
+          roundedBottom
+          rulesType="dashed"
+          rulesColor="rgba(0, 0, 0, 0.1)"
+          xAxisThickness={0}
+          yAxisThickness={0}
+          yAxisTextStyle={{ color: 'rgba(0, 0, 0, 0.6)', fontSize: 12, fontFamily: 'sans-medium' }}
+          noOfSections={4}
+          maxValue={maxValue}
+          initialSpacing={15}
+          xAxisLabelTextStyle={{ color: 'rgba(0, 0, 0, 0.6)', textAlign: 'center', fontSize: 11, fontFamily: 'sans-medium' }}
+        />
       </View>
     </View>
   );
