@@ -8,7 +8,7 @@ import "@/global.css";
 import { posthog } from '@/lib/posthog';
 import { formatCurrency, isActiveInMonth } from "@/lib/utils";
 import { useSubscriptions } from "@/lib/SubscriptionsContext";
-import { useUser } from '@clerk/expo';
+import { useAuth, useUser } from '@clerk/expo';
 import dayjs from 'dayjs';
 import { styled } from 'nativewind';
 import { useState, useMemo, useEffect } from "react";
@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import UpcomingRenewalsModal from "@/components/UpcomingRenewalsModal";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
+import { createClerkSupabaseClient } from '@/lib/supabase';
 
 //SafeAreaView is the 3rd party component and does not support style so
 //nativewind need styled component to enable style support
@@ -30,6 +31,54 @@ export default function App() {
   const [isModalVisible, setModalVisible] = useState(false);
   const [isUpcomingModalVisible, setUpcomingModalVisible] = useState(false);
   const [randomSubIds, setRandomSubIds] = useState<string[]>([]);
+  const [dbName, setDbName] = useState<string | null>(null);
+
+  const { getToken } = useAuth();
+
+  useEffect(() => {
+    const syncUserToSupabase = async () => {
+      if (!user) return;
+      try {
+        const token = await getToken({ template: 'supabase' });
+        if (!token) return;
+        const supabase = createClerkSupabaseClient(token);
+        
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', user.id)
+          .maybeSingle();
+          
+        if (existingUser) {
+          setDbName(existingUser.name);
+        } else {
+          // Determine name to use
+          const nameToUse = user.fullName || user.primaryEmailAddress?.emailAddress?.split('@')[0] || HOME_USER.name;
+          
+          // Insert user
+          const { error } = await supabase.from('users').insert({
+            id: user.id,
+            name: nameToUse,
+            email: user.primaryEmailAddress?.emailAddress
+          });
+          
+          if (!error) {
+            setDbName(nameToUse);
+          } else if (error) {
+            if (error.code !== '23505') {
+              console.error("Error inserting user:", error);
+            }
+            // Fallback to displaying Clerk name if DB insert fails or row already exists
+            setDbName(nameToUse);
+          }
+        }
+      } catch (err) {
+        console.error("Error syncing user:", err);
+      }
+    };
+    
+    syncUserToSupabase();
+  }, [user, getToken]);
 
   useEffect(() => {
     // Only pick random subscriptions once when data is loaded
@@ -77,7 +126,7 @@ export default function App() {
                     className="home-avatar" 
                   />
                   <Text className="home-user-name">
-                    {user?.fullName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || HOME_USER.name}
+                    {dbName || user?.fullName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || HOME_USER.name}
                   </Text>
                 </View>
 

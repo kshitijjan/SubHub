@@ -26,9 +26,12 @@ export default function SignInScreen() {
     })
 
     if (error) {
-      console.error(JSON.stringify(error, null, 2))
-      posthog.captureException(error)
-      setGlobalError(error.message || 'Invalid email or password.')
+      const clerkError = error.errors?.[0]?.longMessage || error.message || 'Invalid email or password.'
+      if (error.code !== 'api_response_error') {
+        console.error(JSON.stringify(error, null, 2))
+        posthog.captureException(error)
+      }
+      setGlobalError(clerkError)
       return
     }
 
@@ -226,6 +229,14 @@ export default function SignInScreen() {
                   <Text className="auth-button-text">Continue</Text>
                 )}
               </Pressable>
+            </View>
+
+            <View className="flex items-center mt-4 mb-2">
+              <Link href="/(auth)/forgot-password" asChild>
+                <Pressable>
+                  <Text className="auth-link">Forgot Password?</Text>
+                </Pressable>
+              </Link>
             </View>
 
             <View className="auth-link-row">

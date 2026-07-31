@@ -207,7 +207,8 @@ export const SubscriptionsProvider = ({ children }: { children: ReactNode }) => 
       setSubscriptions([]);
       setIsLoading(false);
     }
-  }, [userId, getToken]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const addSubscription = async (newSub: any): Promise<boolean> => {
     try {

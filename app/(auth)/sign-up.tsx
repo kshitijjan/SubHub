@@ -1,20 +1,40 @@
-import { useSignUp } from '@clerk/expo'
+import { useSignUp, useOAuth } from '@clerk/expo'
 import { Link } from 'expo-router'
 import React, { useState } from 'react'
 import { Pressable, TextInput, View, Text, ScrollView, ActivityIndicator } from 'react-native'
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context'
 import { styled } from 'nativewind'
 import { posthog } from '@/lib/posthog'
+import { useWarmUpBrowser } from '@/hooks/useWarmUpBrowser'
+import * as WebBrowser from 'expo-web-browser'
+import { Ionicons } from '@expo/vector-icons'
+
+WebBrowser.maybeCompleteAuthSession()
 
 const SafeAreaView = styled(RNSafeAreaView)
 
 export default function SignUpScreen() {
+  useWarmUpBrowser()
   const { signUp, errors, fetchStatus } = useSignUp()
+  const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' })
 
+  const [name, setName] = useState('')
   const [emailAddress, setEmailAddress] = useState('')
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
   const [globalError, setGlobalError] = useState('')
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const { createdSessionId, setActive: setOAuthActive } = await startOAuthFlow()
+      if (createdSessionId && setOAuthActive) {
+        setOAuthActive({ session: createdSessionId })
+      }
+    } catch (err: any) {
+      console.error('OAuth error', err)
+      setGlobalError(err.message || 'Google Sign In failed')
+    }
+  }
 
   const handleSubmit = async () => {
     setGlobalError('')
@@ -23,6 +43,10 @@ export default function SignUpScreen() {
       emailAddress,
       password,
     })
+
+    if (!error) {
+      await signUp.update({ firstName: name })
+    }
 
     if (error) {
       console.error(JSON.stringify(error, null, 2))
@@ -137,6 +161,32 @@ export default function SignUpScreen() {
               </View>
             ) : (
               <View className="auth-form">
+                <Pressable 
+                  className="auth-button flex-row items-center justify-center bg-white border border-gray-200"
+                  onPress={handleGoogleSignIn}
+                  disabled={loading}
+                >
+                  <Ionicons name="logo-google" size={20} color="#000" style={{ marginRight: 8 }} />
+                  <Text className="auth-button-text text-black">Continue with Google</Text>
+                </Pressable>
+                
+                <View className="flex-row items-center my-4">
+                  <View className="flex-1 h-px bg-border" />
+                  <Text className="mx-4 text-muted-foreground text-sm">OR</Text>
+                  <View className="flex-1 h-px bg-border" />
+                </View>
+
+                <View className="auth-field">
+                  <Text className="auth-label">Name</Text>
+                  <TextInput
+                    className="auth-input"
+                    value={name}
+                    placeholder="Enter full name"
+                    placeholderTextColor="#9ca3af"
+                    onChangeText={setName}
+                  />
+                </View>
+
                 <View className="auth-field">
                   <Text className="auth-label">Email address</Text>
                   <TextInput
@@ -187,6 +237,14 @@ export default function SignUpScreen() {
                     <Text className="auth-button-text">Sign up</Text>
                   )}
                 </Pressable>
+
+                <View className="flex items-center mt-4 mb-2">
+                  <Link href="/(auth)/forgot-password" asChild>
+                    <Pressable>
+                      <Text className="auth-link">Forgot Password?</Text>
+                    </Pressable>
+                  </Link>
+                </View>
 
                 <View className="auth-link-row">
                   <Text className="auth-link-copy">Already have an account? </Text>
